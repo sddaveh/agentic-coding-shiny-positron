@@ -81,3 +81,14 @@ fc |>
   facet_wrap(Purpose ~ .model, ncol = 2) +
   theme_minimal()
 ```
+
+## Forecast table
+
+```{r}
+fc |> 
+  filter(.model == 'arima') |>
+  as_tibble() |>
+  select(Purpose, .model, Quarter, .mean) |>
+  pivot_wider(names_from = Quarter, values_from = .mean) |>
+  gt() |> fmt_number(decimals = 0)
+```
