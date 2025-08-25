@@ -23,33 +23,38 @@ ui <- page_navbar(
   title = "Australian Tourism Forecast",
   
   # Tab 1 - Visualization
-  nav_panel(
-    title = "Visualization",
-    page_sidebar(
-      sidebar = sidebar(
-        checkboxGroupInput(
-          "selected_purposes",
-          "Select Purposes:",
-          choices = setNames(purposes, purposes),
-          selected = purposes  # Default to all purposes
-        ),
-        dateRangeInput(
-          "date_range",
-          "Training/Forecast Range:",
-          start = as.Date(yearquarter("2016 Q1")),
-          end = as.Date(date_range[2]),
-          min = as.Date(date_range[1]),
-          max = as.Date(date_range[2])
-        ),
-        p("First date: Training cutoff (default 1 year before end)"),
-        p("Second date: End of forecast horizon")
+nav_panel(
+  title = "Visualization",
+  page_sidebar(
+    sidebar = sidebar(
+      checkboxGroupInput(
+        "selected_purposes",
+        "Select Purposes:",
+        choices = setNames(purposes, purposes),
+        selected = purposes  # Default to all purposes
       ),
-      card(
-        card_header("Tourism Data Visualization"),
-        plotOutput("tourism_plot", height = "700px")
+      dateRangeInput(
+        "date_range",
+        "Training/Forecast Range:",
+        start = as.Date(yearquarter("2016 Q1")),
+        end = as.Date(date_range[2]),
+        min = as.Date(date_range[1]),
+        max = as.Date(date_range[2])
+      ),
+      p("First date: Training cutoff (default 1 year before end)"),
+      p("Second date: End of forecast horizon"),
+      checkboxInput(
+        "free_y_scale",
+        "Free Y Scale",
+        value = TRUE
       )
+    ),
+    card(
+      card_header("Tourism Data Visualization"),
+      plotOutput("tourism_plot", height = "700px")
     )
-  ),
+  )
+),
   
   # Tab 2 - Model Building
 nav_panel(
@@ -64,7 +69,7 @@ nav_panel(
       checkboxInput(
         "show_training_accuracy",
         "Show Training Accuracy",
-        value = FALSE
+        value = TRUE  # Changed from FALSE to TRUE
       )
     ),
     # First row - Conditional Model Specifications card
@@ -167,45 +172,48 @@ server <- function(input, output, session) {
   })
   
   # Tab 1 - Visualization plot
-  output$tourism_plot <- renderPlot({
-    req(nrow(filtered_data()) > 0, input$date_range)
-    
-    # Convert dates properly to yearquarter
-    train_cutoff_date <- yearquarter(paste(year(input$date_range[1]), "Q", quarter(input$date_range[1]), sep=""))
-    forecast_end_date <- yearquarter(paste(year(input$date_range[2]), "Q", quarter(input$date_range[2]), sep=""))
-    
-    filtered_data() |>
-      autoplot(Trips) +
-      # Add gray shading for forecast horizon
-      annotate(
-        "rect",
-        xmin = as.Date(train_cutoff_date),
-        xmax = as.Date(forecast_end_date),
-        ymin = -Inf,
-        ymax = Inf,
-        alpha = 0.2,
-        fill = "lightgray"
-      ) +
-      # Add vertical red line for training cutoff
-      geom_vline(
-        xintercept = as.Date(train_cutoff_date), 
-        color = "red", 
-        linetype = "solid",
-        size = 0.8
-      ) +
-      labs(
-        y = "Trips", 
-        title = "Tourism Data with Training Cutoff and Forecast Horizon",
-        caption = "Red line indicates training cutoff; gray shading shows forecast horizon"
-      ) +
-      facet_wrap(~Purpose, ncol = 1, scales = "free_y") +
-      theme_minimal(base_size = 12) +
-      theme(
-        plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
-        strip.text = element_text(face = "bold", size = 12),
-        panel.grid.minor = element_blank()
-      )
-  })
+output$tourism_plot <- renderPlot({
+  req(nrow(filtered_data()) > 0, input$date_range)
+  
+  # Convert dates properly to yearquarter
+  train_cutoff_date <- yearquarter(paste(year(input$date_range[1]), "Q", quarter(input$date_range[1]), sep=""))
+  forecast_end_date <- yearquarter(paste(year(input$date_range[2]), "Q", quarter(input$date_range[2]), sep=""))
+  
+  # Determine scales based on user input
+  scales_option <- if(input$free_y_scale) "free_y" else "fixed"
+  
+  filtered_data() |>
+    autoplot(Trips) +
+    # Add gray shading for forecast horizon
+    annotate(
+      "rect",
+      xmin = as.Date(train_cutoff_date),
+      xmax = as.Date(forecast_end_date),
+      ymin = -Inf,
+      ymax = Inf,
+      alpha = 0.2,
+      fill = "lightgray"
+    ) +
+    # Add vertical red line for training cutoff
+    geom_vline(
+      xintercept = as.Date(train_cutoff_date), 
+      color = "red", 
+      linetype = "solid",
+      size = 0.8
+    ) +
+    labs(
+      y = "Trips", 
+      title = "Tourism Data with Training Cutoff and Forecast Horizon",
+      caption = "Red line indicates training cutoff; gray shading shows forecast horizon"
+    ) +
+    facet_wrap(~Purpose, ncol = 1, scales = scales_option) +
+    theme_minimal(base_size = 12) +
+    theme(
+      plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+      strip.text = element_text(face = "bold", size = 12),
+      panel.grid.minor = element_blank()
+    )
+})
   
   # Tab 2 - Model specifications
   output$model_specs <- renderPrint({
@@ -264,7 +272,7 @@ server <- function(input, output, session) {
         title = "Tourism Forecasts",
         caption = "Showing last 2 years of training data plus forecasts"
       ) +
-      facet_wrap(Purpose ~ .model, ncol = n_models) +
+      facet_wrap(Purpose ~ .model, ncol = n_models, scales = if(input$free_y_scale) "free_y" else "fixed") +
       theme_minimal(base_size = 12) +
       theme(
         plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
