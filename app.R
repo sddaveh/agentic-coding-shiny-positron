@@ -128,7 +128,7 @@ server <- function(input, output, session) {
   # Training cutoff date
   train_cutoff <- reactive({
     req(input$date_range)
-    yearquarter(input$date_range[1])
+    yearquarter(paste(year(input$date_range[1]), "Q", quarter(input$date_range[1]), sep=""))
   })
   
   # Training data
@@ -159,31 +159,46 @@ server <- function(input, output, session) {
       forecast(h = h_periods)
   })
   
-  # Tab 1 - Visualization plot
-  output$tourism_plot <- renderPlot({
-    req(nrow(filtered_data()) > 0)
-    
-    filtered_data() |>
-      autoplot(Trips) +
-      geom_vline(
-        xintercept = as.numeric(train_cutoff()), 
-        color = "red", 
-        linetype = "dashed",
-        size = 0.8
-      ) +
-      labs(
-        y = "Trips", 
-        title = "Tourism Data with Training Cutoff",
-        caption = "Red dashed line indicates training cutoff"
-      ) +
-      facet_wrap(~Purpose, ncol = 1, scales = "free_y") +
-      theme_minimal(base_size = 12) +
-      theme(
-        plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
-        strip.text = element_text(face = "bold", size = 12),
-        panel.grid.minor = element_blank()
-      )
-  })
+# Tab 1 - Visualization plot
+output$tourism_plot <- renderPlot({
+  req(nrow(filtered_data()) > 0, input$date_range)
+  
+  # Convert dates properly to yearquarter
+  train_cutoff_date <- yearquarter(paste(year(input$date_range[1]), "Q", quarter(input$date_range[1]), sep=""))
+  forecast_end_date <- yearquarter(paste(year(input$date_range[2]), "Q", quarter(input$date_range[2]), sep=""))
+  
+  filtered_data() |>
+    autoplot(Trips) +
+    # Add gray shading for forecast horizon
+    annotate(
+      "rect",
+      xmin = as.Date(train_cutoff_date),
+      xmax = as.Date(forecast_end_date),
+      ymin = -Inf,
+      ymax = Inf,
+      alpha = 0.2,
+      fill = "lightgray"
+    ) +
+    # Add vertical red line for training cutoff
+    geom_vline(
+      xintercept = as.Date(train_cutoff_date), 
+      color = "red", 
+      linetype = "solid",
+      size = 0.8
+    ) +
+    labs(
+      y = "Trips", 
+      title = "Tourism Data with Training Cutoff and Forecast Horizon",
+      caption = "Red line indicates training cutoff; gray shading shows forecast horizon"
+    ) +
+    facet_wrap(~Purpose, ncol = 1, scales = "free_y") +
+    theme_minimal(base_size = 12) +
+    theme(
+      plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+      strip.text = element_text(face = "bold", size = 12),
+      panel.grid.minor = element_blank()
+    )
+})
   
   # Tab 2 - Model specifications
   output$model_specs <- renderPrint({
