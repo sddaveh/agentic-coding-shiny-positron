@@ -10,7 +10,12 @@ library(gt)
 require(urca)
 ```
 
-## Data import / preparation
+## Tab1 - Visualizatoin
+
+### Data import / preparation
+
+* Inputs - multiselect for Purpose
+* Train date cutoff - default to 1 year prior to the max date
 
 ```{r}
 # aggregate into Purpose
@@ -23,21 +28,31 @@ data <- tourism |>
 train_cutoff <- yearquarter("2017 Jan 01")
 ```
 
-## Data visualization
+###  Data visualization
 
 ```{r}
 # visualize the data with autoplot and facets by purpose
-data |> 
+data_trn <- data |>
+  filter(Quarter < train_cutoff)
+
+data |>
   autoplot(Trips) +
+  geom_vline(xintercept = as_date(train_cutoff), color = "red", linetype = "dashed") +
   labs(y = "Trips", title = "Tourism data") +
   facet_wrap(~Purpose, ncol = 1, scales = "free_y") +
   theme_minimal()
 
-data_trn <- data |>
-  filter(Quarter < train_cutoff)
+
 ```
 
-## Model fitting
+## Tab 2 - Model Building
+
+Inputs:
+
+* Toggle for model specificatoin (default off)
+* Toggle Training accuracy (default off)
+
+### Model fitting
 
 Build multiple models for the Purpose series using Auto ARIMA and ETS.
 ```{r}
@@ -46,9 +61,10 @@ fit <- data_trn |>
     arima = ARIMA(Trips),
     ets = ETS(Trips)
   )
+fit # output the model specifications
 ```
 
-## Training accuracy 
+### Training accuracy 
 
 ```{r}
 fit |> 
@@ -59,7 +75,7 @@ fit |>
 ```
 
 
-## Forecast accuracy 
+### Forecast accuracy 
 
 ```{r}
 fc <- fit |> 
@@ -71,7 +87,13 @@ fc |>
   gt() |> fmt_number(decimals = 2)
 ```
 
-## Forecast visualization 
+## Tab3 - Forecast
+
+Inputs:
+
+* Select the model for the Forecast table
+
+### Forecast visualization 
 
 ```{r}
 trn_start <- yearquarter( train_cutoff |> as.Date() - years(1) )
