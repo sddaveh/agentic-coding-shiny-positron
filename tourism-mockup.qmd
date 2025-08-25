@@ -14,8 +14,13 @@ require(urca)
 
 ### Data import / preparation
 
-* Inputs - multiselect for Purpose
-* Train date cutoff - default to 1 year prior to the max date
+Inputs 
+
+
+* multiselect for Purpose
+* Date range
+  * First date is the Train date cutoff - default to 1 year 
+  * Second date is the end of the forecast horizon - default to last date
 
 ```{r}
 # aggregate into Purpose
