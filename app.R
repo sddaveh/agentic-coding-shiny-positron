@@ -51,43 +51,46 @@ ui <- page_navbar(
   ),
   
   # Tab 2 - Model Building
-  nav_panel(
-    title = "Model Building",
-    page_sidebar(
-      sidebar = sidebar(
-        checkboxInput(
-          "show_model_spec",
-          "Show Model Specifications",
-          value = FALSE
-        ),
-        checkboxInput(
-          "show_training_accuracy",
-          "Show Training Accuracy",
-          value = FALSE
-        )
+nav_panel(
+  title = "Model Building",
+  page_sidebar(
+    sidebar = sidebar(
+      checkboxInput(
+        "show_model_spec",
+        "Show Model Specifications",
+        value = FALSE
       ),
-      layout_columns(
-        card(
-          card_header("Model Specifications"),
-          conditionalPanel(
-            condition = "input.show_model_spec",
-            verbatimTextOutput("model_specs")
-          )
-        ),
-        card(
-          card_header("Training Accuracy"),
-          conditionalPanel(
-            condition = "input.show_training_accuracy",
-            gt_output("training_accuracy")
-          )
-        ),
-        card(
-          card_header("Forecast Accuracy"),
-          gt_output("forecast_accuracy")
-        )
+      checkboxInput(
+        "show_training_accuracy",
+        "Show Training Accuracy",
+        value = FALSE
       )
+    ),
+    # Conditional Model Specifications card
+    conditionalPanel(
+      condition = "input.show_model_spec",
+      card(
+        card_header("Model Specifications"),
+        verbatimTextOutput("model_specs")
+      )
+    ),
+    
+    # Conditional Training Accuracy card  
+    conditionalPanel(
+      condition = "input.show_training_accuracy",
+      card(
+        card_header("Training Accuracy"),
+        gt_output("training_accuracy")
+      )
+    ),
+    
+    # Forecast Accuracy card (always shown)
+    card(
+      card_header("Forecast Accuracy"),
+      gt_output("forecast_accuracy")
     )
-  ),
+  )
+),
   
   # Tab 3 - Forecast
   nav_panel(
