@@ -20,9 +20,9 @@ ui <- navbarPage(
         width = 3,
         selectInput("state", "State", choices = c("All", unique(tourism$State)), selected = "All"),
         selectInput("purpose", "Purpose", choices = c("All", unique(tourism$Purpose)), selected = "All"),
-        sliderInput("date_range", "Quarter range",
-                    min = min(tourism$Quarter), max = max(tourism$Quarter),
-                    value = c(yearquarter("2000 Q1"), max(tourism$Quarter)), step = 1),
+        dateRangeInput("date_range", "Quarter range",
+                       start = min(as.Date(tourism$Quarter)),
+                       end   = max(as.Date(tourism$Quarter))),
         checkboxInput("facet_regions", "Facet by Region", value = FALSE)
       ),
       mainPanel(
@@ -43,9 +43,8 @@ ui <- navbarPage(
         radioButtons("model_type", "Model",
                      choices = c("ETS (auto)" = "ets", "ARIMA (auto)" = "arima", "STL + ETS" = "stl_ets"),
                      selected = "arima"),
-        sliderInput("train_cut", "Train until (last included quarter)",
-                    min = min(tourism$Quarter), max = max(tourism$Quarter) - 4,
-                    value = yearquarter("2014 Q4"), step = 1),
+        dateInput("train_cut", "Train until (last included quarter)",
+                  value = as.Date(yearquarter("2014 Q4"))),
         numericInput("h", "Horizon (quarters)", value = 8, min = 1, max = 24, step = 1),
         checkboxInput("by_purpose", "Fit separate models per Purpose", value = TRUE)
       ),
@@ -83,39 +82,31 @@ ui <- navbarPage(
 
 server <- function(input, output, session) {
   # ---- Helpers ----
-  # Filtered data according to Explore inputs
   data_filtered <- reactive({
     d <- tourism
     if (input$state != "All") d <- d |> filter(State == input$state)
     if (input$purpose != "All") d <- d |> filter(Purpose == input$purpose)
-    d |> filter(Quarter >= input$date_range[1], Quarter <= input$date_range[2])
+    d |> filter(Quarter >= yearquarter(input$date_range[1]),
+                Quarter <= yearquarter(input$date_range[2]))
   })
   
-  # Keying for models: either by Purpose as well, or not
   key_spec <- reactive({
     if (isTRUE(input$by_purpose)) c(State, Region, Purpose) else c(State, Region)
   })
   
-  # Train/test split based on Train & Diagnose tab
   train_ts <- reactive({
-    data_filtered() |> filter(Quarter <= input$train_cut)
+    data_filtered() |> filter(Quarter <= yearquarter(input$train_cut))
   })
   test_ts <- reactive({
-    data_filtered() |> filter(Quarter > input$train_cut)
+    data_filtered() |> filter(Quarter > yearquarter(input$train_cut))
   })
   
-  # Model fitting function
   fit_model <- function(dat, model_type, key_cols) {
-    # Ensure we have a key structure
-    dat_keyed <- dat |>
-      as_tsibble(index = Quarter, key = all_of(names(as.list(ensym(key_cols)))))
-    # Model specification
+    dat_keyed <- dat |> as_tsibble(index = Quarter, key = key_cols)
     if (model_type == "ets") {
-      mdl <- dat_keyed |>
-        model(ets = ETS(Trips))
+      mdl <- dat_keyed |> model(ets = ETS(Trips))
     } else if (model_type == "arima") {
-      mdl <- dat_keyed |>
-        model(arima = ARIMA(Trips))
+      mdl <- dat_keyed |> model(arima = ARIMA(Trips))
     } else {
       mdl <- dat_keyed |>
         model(stl_ets = decomposition_model(
@@ -129,8 +120,7 @@ server <- function(input, output, session) {
   # ---- Explore outputs ----
   output$p_explore <- renderPlot({
     d <- data_filtered()
-    p <- d |>
-      autoplot(Trips) +
+    p <- d |> autoplot(Trips) +
       labs(y = "Trips", x = NULL, title = "Australian Tourism — Trips") +
       theme_minimal()
     if (isTRUE(input$facet_regions)) {
@@ -140,13 +130,10 @@ server <- function(input, output, session) {
   })
   
   output$t_summary <- renderTable({
-    data_filtered() |>
-      as_tibble() |>
+    data_filtered() |> as_tibble() |>
       group_by(State, Region, Purpose) |>
-      summarise(
-        start = min(Quarter), end = max(Quarter),
-        mean_trips = mean(Trips), sd_trips = sd(Trips), .groups = "drop"
-      ) |>
+      summarise(start = min(Quarter), end = max(Quarter),
+                mean_trips = mean(Trips), sd_trips = sd(Trips), .groups = "drop") |>
       arrange(State, Region, Purpose)
   })
   
@@ -171,9 +158,7 @@ server <- function(input, output, session) {
     trn <- train_ts()
     tst <- test_ts()
     f <- fc_diag()
-    # Plot forecasts over last year of training + test period
-    start_show <- yearquarter(as.Date(min(tst$Quarter), origin = "1970-01-01") - 365)
-    trn_show <- trn |> filter(Quarter >= start_show)
+    trn_show <- trn |> filter(Quarter >= max(trn$Quarter, na.rm = TRUE) - 4)
     autoplot(trn_show, Trips) +
       autolayer(f, level = if (input$show_ci) c(80, 95) else NULL) +
       autolayer(tst, Trips, colour = "black") +
@@ -193,8 +178,7 @@ server <- function(input, output, session) {
   output$p_fc <- renderPlot({
     d <- data_filtered()
     f <- fc_out()
-    start_show <- yearquarter(as.Date(max(d$Quarter)) - years(1))
-    d_show <- d |> filter(Quarter >= start_show)
+    d_show <- d |> filter(Quarter >= max(d$Quarter, na.rm = TRUE) - 4)
     autoplot(d_show, Trips) +
       autolayer(f, level = if (input$show_ci) c(80, 95) else NULL) +
       labs(y = "Trips", title = "Tourism data forecasts") +
@@ -203,8 +187,7 @@ server <- function(input, output, session) {
   })
   
   output$gt_fc <- render_gt({
-    f <- fc_out() |>
-      as_tibble() |>
+    f <- fc_out() |> as_tibble() |>
       select(State, Region, Purpose, .model, Quarter, .mean) |>
       mutate(Quarter = as.character(Quarter)) |>
       pivot_wider(names_from = Quarter, values_from = .mean) |>
