@@ -1,0 +1,3 @@
+[submodule "labs/lab_5-agentic-coding-shiny-positron"]
+	path = labs/lab_5-agentic-coding-shiny-positron
+	url = git@github.com:sddaveh/agentic-coding-shiny-positron.git
