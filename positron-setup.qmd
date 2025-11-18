@@ -1,0 +1,76 @@
+---
+title: "Agentic Coding with Positron"
+format:
+  html:
+    theme: cosmo
+    mermaid:
+      theme: default   # forces mermaid to light colors
+---
+
+-   [x] [Shiny Assistant](https://gallery.shinyapps.io/assistant/)
+-   [x] RStudio / Posit.Cloud
+-   [ ] Intro to Positron
+    -   [ ] Beta / About
+    -   [x] Switching from RStudio to Positron
+    -   [x] Switching from VSCode to Positron
+-   [x] Setup
+    -   [x] Autosave / Quarto: Render on Save
+    -   [x] LLM services - [Positron Assistant](https://positron.posit.co/assistant.html)
+        -   [x] Anthropic
+        -   [x] Github copilot
+    -   [x] Extensions
+    -   [x] Settings
+    -   [x] Themes
+-   [x] Git / Github
+-   [x] Strategies for building Shiny apps with LLMs
+-   [x] Australian Tourism Example - Quarto Document
+    -   Data import / preparation
+    -   Data visualization
+    -   Model fitting
+    -   Training accuracy
+    -   Forecast accuracy
+    -   Forecast visualization
+    -   Report generation
+
+:::::: fragment
+::::: columns
+::: column
+-   [ ] Build Shiny App
+-   [ ] Deploy Shiny App
+:::
+
+::: column
+-   Allow User to select Purpose (multiple)
+-   Set the time interval
+-   Set the forecast horizon
+-   Select the model for the forecast report
+:::
+:::::
+::::::
+
+## Github Mental Model
+
+```{mermaid}
+%%{init: {'theme':'base', 'themeVariables': {'background':'#ffffff', 'primaryColor':'#ffffff'}}}%%
+graph TB
+    subgraph Remote["GitHub (Remote)"]
+        GH[GitHub Repository]
+        GH_BRANCHES[Branches & History]
+        GH --> GH_BRANCHES
+    end
+
+    subgraph Local["Local Machine"]
+        LOCAL["Local Git Repository<br/>(.git folder)"]
+        HISTORY["Complete Version History<br/>All Branches"]
+        LOCAL --> HISTORY
+        
+        FOLDER["Working Directory<br/>Files & Folders"]
+        CHECKOUT[git checkout]
+        
+        CHECKOUT -.-> FOLDER
+        LOCAL --> CHECKOUT
+    end
+
+    GH <--> LOCAL
+    HISTORY -.-> FOLDER
+```

@@ -22,7 +22,7 @@ date_range <- range(tourism_data$Quarter)
 ui <- page_navbar(
   title = "Australian Tourism Forecast",
   
-  # Tab 1 - Visualization
+  # Tab 1 - Visualization.
 nav_panel(
   title = "Visualization",
   page_sidebar(
